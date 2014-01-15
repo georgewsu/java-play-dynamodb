@@ -12,54 +12,12 @@ import org.junit.Test;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
-import com.amazonaws.services.dynamodbv2.model.TableStatus;
 
 public class DynamoDBServiceTest {
-
-    private static AmazonDynamoDBClient dynamoDB;
-
-    static {
-        dynamoDB = new AmazonDynamoDBClient(new BasicAWSCredentials("", ""));
-        dynamoDB.setEndpoint("http://localhost:8000"); 
-    }
-
-    private static void waitForTableToBecomeAvailable(String tableName) {
-        System.out.println("Waiting for " + tableName + " to become ACTIVE...");
-
-        long startTime = System.currentTimeMillis();
-        long endTime = startTime + (10 * 60 * 1000);
-        while (System.currentTimeMillis() < endTime) {
-            try {Thread.sleep(1000 * 20);} catch (Exception e) {}
-            try {
-                DescribeTableRequest request = new DescribeTableRequest().withTableName(tableName);
-                TableDescription tableDescription = dynamoDB.describeTable(request).getTable();
-                String tableStatus = tableDescription.getTableStatus();
-                System.out.println("  - current state: " + tableStatus);
-                if (tableStatus.equals(TableStatus.ACTIVE.toString())) return;
-            } catch (AmazonServiceException ase) {
-                if (ase.getErrorCode().equalsIgnoreCase("ResourceNotFoundException") == false) throw ase;
-            }
-        }
-
-        throw new RuntimeException("Table " + tableName + " never went active");
-    }
 
     @Test
     public void test() {
@@ -67,34 +25,28 @@ public class DynamoDBServiceTest {
             String tableName = "widgets";
 
             // Create a table with a primary hash key named 'name', which holds a string
-            CreateTableRequest createTableRequest = new CreateTableRequest().withTableName(tableName)
-                .withKeySchema(new KeySchemaElement().withAttributeName("name").withKeyType(KeyType.HASH))
-                .withAttributeDefinitions(new AttributeDefinition().withAttributeName("name").withAttributeType(ScalarAttributeType.S))
-                .withProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
-            TableDescription createdTableDescription = dynamoDB.createTable(createTableRequest).getTableDescription();
-            System.out.println("Created Table: " + createdTableDescription);
+            // TODO: check for pre-existing table instead of generic exception handling
+            try {
+                DynamoDBService.createTable(tableName, "name");
+            }
+            catch (Exception e) {
+            }
 
             // Wait for it to become active
-            waitForTableToBecomeAvailable(tableName);
+            DynamoDBService.waitForTableToBecomeAvailable(tableName);
 
             // Describe our new table
-            DescribeTableRequest describeTableRequest = new DescribeTableRequest().withTableName(tableName);
-            TableDescription tableDescription = dynamoDB.describeTable(describeTableRequest).getTable();
-            System.out.println("Table Description: " + tableDescription);
+            DynamoDBService.describeTable(tableName);
 
             // Add an item
             Widget w1 = new Widget("w1", "widget1", 1);
             Map<String, AttributeValue> item = w1.toDynamoMap();
-            PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
-            PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
-            System.out.println("Result: " + putItemResult);
+            DynamoDBService.putItem(tableName, item);
 
             // Add another item
             Widget w2 = new Widget("w2", "widget2", 2);
             item = w2.toDynamoMap();
-            putItemRequest = new PutItemRequest(tableName, item);
-            putItemResult = dynamoDB.putItem(putItemRequest);
-            System.out.println("Result: " + putItemResult);
+            DynamoDBService.putItem(tableName, item);
 
             // Scan for widgets with a price attribute greater than 1
             HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
@@ -102,8 +54,8 @@ public class DynamoDBServiceTest {
                 .withComparisonOperator(ComparisonOperator.GT.toString())
                 .withAttributeValueList(new AttributeValue().withN("1"));
             scanFilter.put("price", condition);
-            ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
-            ScanResult scanResult = dynamoDB.scan(scanRequest);
+            
+            ScanResult scanResult = DynamoDBService.scan(tableName, scanFilter);
             System.out.println("Result: " + scanResult);
             
             Assert.assertSame(1, scanResult.getCount());
