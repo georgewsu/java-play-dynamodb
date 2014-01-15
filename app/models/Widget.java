@@ -49,4 +49,8 @@ public class Widget {
         return map;
     }
 
+    public static Widget fromDynamoMap(Map<String, AttributeValue> item) {
+        return new Widget(item.get("name").getS(), item.get("description").getS(), Integer.parseInt(item.get("price").getN()));
+    }
+
 }

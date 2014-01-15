@@ -16,6 +16,8 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
+import com.amazonaws.services.dynamodbv2.model.QueryRequest;
+import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
@@ -47,7 +49,6 @@ public class DynamoDBService {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (10 * 60 * 1000);
         while (System.currentTimeMillis() < endTime) {
-            try {Thread.sleep(1000 * 20);} catch (Exception e) {}
             try {
                 DescribeTableRequest request = new DescribeTableRequest().withTableName(tableName);
                 TableDescription tableDescription = dynamoDB.describeTable(request).getTable();
@@ -56,6 +57,11 @@ public class DynamoDBService {
                 if (tableStatus.equals(TableStatus.ACTIVE.toString())) return;
             } catch (AmazonServiceException ase) {
                 if (ase.getErrorCode().equalsIgnoreCase("ResourceNotFoundException") == false) throw ase;
+            }
+            try {
+                Thread.sleep(1000 * 5);
+            }
+            catch (Exception e) {
             }
         }
 
@@ -79,6 +85,20 @@ public class DynamoDBService {
         ScanResult scanResult = dynamoDB.scan(scanRequest);
         System.out.println("Result: " + scanResult);
         return scanResult;
+    }
+
+    public static ScanResult scan(String tableName) {
+        ScanRequest scanRequest = new ScanRequest(tableName);
+        ScanResult scanResult = dynamoDB.scan(scanRequest);
+        System.out.println("Result: " + scanResult);
+        return scanResult;
+    }
+
+    public static QueryResult query(String tableName) {
+        QueryRequest queryRequest = new QueryRequest(tableName);
+        QueryResult queryResult = dynamoDB.query(queryRequest);
+        System.out.println("Result: " + queryResult);
+        return queryResult;
     }
 
 }
