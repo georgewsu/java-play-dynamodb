@@ -5,7 +5,8 @@ version := "1.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   javaJdbc,
   javaEbean,
-  cache
+  cache,
+  "com.amazonaws" % "aws-java-sdk" % "1.6.12"
 )     
 
 play.Project.playJavaSettings
